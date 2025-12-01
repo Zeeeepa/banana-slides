@@ -510,3 +510,134 @@ def generate_single_page_image_task(task_id: str, project_id: str, page_id: str,
                 page.status = 'FAILED'
                 db.session.commit()
 
+
+def edit_page_image_task(task_id: str, project_id: str, page_id: str,
+                         edit_instruction: str, ai_service, file_service,
+                         aspect_ratio: str = "16:9", resolution: str = "2K",
+                         original_description: str = None,
+                         additional_ref_images: List[str] = None,
+                         temp_dir: str = None, app=None):
+    """
+    Background task for editing a page image
+    
+    Note: app instance MUST be passed from the request context
+    """
+    if app is None:
+        raise ValueError("Flask app instance must be provided")
+    
+    with app.app_context():
+        try:
+            # Update task status to PROCESSING
+            task = Task.query.get(task_id)
+            if not task:
+                return
+            
+            task.status = 'PROCESSING'
+            db.session.commit()
+            
+            # Get page from database
+            page = Page.query.get(page_id)
+            if not page or page.project_id != project_id:
+                raise ValueError(f"Page {page_id} not found")
+            
+            if not page.generated_image_path:
+                raise ValueError("Page must have generated image first")
+            
+            # Update page status
+            page.status = 'GENERATING'
+            db.session.commit()
+            
+            # Get current image path
+            current_image_path = file_service.get_absolute_path(page.generated_image_path)
+            
+            # Edit image
+            print(f"[INFO] 🎨 Editing image for page {page_id}...")
+            try:
+                image = ai_service.edit_image(
+                    edit_instruction,
+                    current_image_path,
+                    aspect_ratio,
+                    resolution,
+                    original_description=original_description,
+                    additional_ref_images=additional_ref_images if additional_ref_images else None
+                )
+            finally:
+                # Clean up temp directory if created
+                if temp_dir:
+                    import shutil
+                    from pathlib import Path
+                    temp_path = Path(temp_dir)
+                    if temp_path.exists():
+                        shutil.rmtree(temp_dir)
+            
+            if not image:
+                raise ValueError("Failed to edit image")
+            
+            # Calculate next version number
+            from models import PageImageVersion
+            existing_versions = PageImageVersion.query.filter_by(page_id=page_id).all()
+            next_version = len(existing_versions) + 1
+            
+            # Save edited image with version number
+            image_path = file_service.save_generated_image(
+                image, project_id, page_id,
+                version_number=next_version
+            )
+            
+            # Mark all previous versions as not current
+            for version in existing_versions:
+                version.is_current = False
+            
+            # Create new version record
+            new_version = PageImageVersion(
+                page_id=page_id,
+                image_path=image_path,
+                version_number=next_version,
+                is_current=True
+            )
+            db.session.add(new_version)
+            
+            # Update page with current image path
+            page.generated_image_path = image_path
+            page.status = 'COMPLETED'
+            page.updated_at = datetime.utcnow()
+            
+            # Mark task as completed
+            task.status = 'COMPLETED'
+            task.completed_at = datetime.utcnow()
+            task.set_progress({
+                "total": 1,
+                "completed": 1,
+                "failed": 0
+            })
+            db.session.commit()
+            
+            print(f"[INFO] ✅ Task {task_id} COMPLETED - Page {page_id} image edited")
+        
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"[ERROR] Task {task_id} FAILED: {error_detail}")
+            
+            # Clean up temp directory on error
+            if temp_dir:
+                import shutil
+                from pathlib import Path
+                temp_path = Path(temp_dir)
+                if temp_path.exists():
+                    shutil.rmtree(temp_dir)
+            
+            # Mark task as failed
+            task = Task.query.get(task_id)
+            if task:
+                task.status = 'FAILED'
+                task.error_message = str(e)
+                task.completed_at = datetime.utcnow()
+                db.session.commit()
+            
+            # Update page status
+            page = Page.query.get(page_id)
+            if page:
+                page.status = 'FAILED'
+                db.session.commit()
+

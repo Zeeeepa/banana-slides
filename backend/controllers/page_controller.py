@@ -5,7 +5,7 @@ from flask import Blueprint, request, current_app
 from models import db, Project, Page, PageImageVersion, Task
 from utils import success_response, error_response, not_found, bad_request
 from services import AIService, FileService
-from services.task_manager import task_manager, generate_single_page_image_task
+from services.task_manager import task_manager, generate_single_page_image_task, edit_page_image_task
 from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -547,11 +547,14 @@ def edit_page_image(project_id, page_id):
             if isinstance(desc_image_urls, list):
                 additional_ref_images.extend(desc_image_urls)
         
-        # 3. Save and add uploaded files
+        # 3. Save and add uploaded files to a persistent location
         temp_dir = None
         if uploaded_files:
-            # Create a temporary directory for context images
-            temp_dir = Path(tempfile.mkdtemp())
+            # Create a temporary directory in the project's upload folder
+            import tempfile
+            import shutil
+            from werkzeug.utils import secure_filename
+            temp_dir = Path(tempfile.mkdtemp(dir=current_app.config['UPLOAD_FOLDER']))
             try:
                 for uploaded_file in uploaded_files:
                     if uploaded_file.filename:
@@ -565,60 +568,46 @@ def edit_page_image(project_id, page_id):
                     shutil.rmtree(temp_dir)
                 raise e
         
-        # Edit image
-        page.status = 'GENERATING'
+        # Create async task for image editing
+        task = Task(
+            project_id=project_id,
+            task_type='EDIT_PAGE_IMAGE',
+            status='PENDING'
+        )
+        task.set_progress({
+            'total': 1,
+            'completed': 0,
+            'failed': 0
+        })
+        db.session.add(task)
         db.session.commit()
         
-        try:
-            image = ai_service.edit_image(
-                data['edit_instruction'],
-                current_image_path,
-                current_app.config['DEFAULT_ASPECT_RATIO'],
-                current_app.config['DEFAULT_RESOLUTION'],
-                original_description=original_description,
-                additional_ref_images=additional_ref_images if additional_ref_images else None
-            )
-        finally:
-            # Clean up temp directory if created
-            if temp_dir and temp_dir.exists():
-                shutil.rmtree(temp_dir)
+        # Get app instance for background task
+        app = current_app._get_current_object()
         
-        if not image:
-            page.status = 'FAILED'
-            db.session.commit()
-            return error_response('AI_SERVICE_ERROR', 'Failed to edit image', 503)
-        
-        # Calculate next version number
-        existing_versions = PageImageVersion.query.filter_by(page_id=page_id).all()
-        next_version = len(existing_versions) + 1
-        
-        # Save edited image with version number
-        image_path = file_service.save_generated_image(
-            image, project_id, page_id,
-            version_number=next_version
+        # Submit background task
+        task_manager.submit_task(
+            task.id,
+            edit_page_image_task,
+            project_id,
+            page_id,
+            data['edit_instruction'],
+            ai_service,
+            file_service,
+            current_app.config['DEFAULT_ASPECT_RATIO'],
+            current_app.config['DEFAULT_RESOLUTION'],
+            original_description,
+            additional_ref_images if additional_ref_images else None,
+            str(temp_dir) if temp_dir else None,
+            app
         )
         
-        # Mark all previous versions as not current
-        for version in existing_versions:
-            version.is_current = False
-        
-        # Create new version record
-        new_version = PageImageVersion(
-            page_id=page_id,
-            image_path=image_path,
-            version_number=next_version,
-            is_current=True
-        )
-        db.session.add(new_version)
-        
-        # Update page with current image path
-        page.generated_image_path = image_path
-        page.status = 'COMPLETED'
-        page.updated_at = datetime.utcnow()
-        
-        db.session.commit()
-        
-        return success_response(page.to_dict(include_versions=True))
+        # Return task_id immediately
+        return success_response({
+            'task_id': task.id,
+            'page_id': page_id,
+            'status': 'PENDING'
+        }, status_code=202)
     
     except Exception as e:
         db.session.rollback()

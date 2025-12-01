@@ -38,7 +38,15 @@ interface ProjectState {
   generatePageDescription: (pageId: string) => Promise<void>;
   generateImages: () => Promise<void>;
   generatePageImage: (pageId: string, forceRegenerate?: boolean) => Promise<void>;
-  editPageImage: (pageId: string, editPrompt: string) => Promise<void>;
+  editPageImage: (
+    pageId: string,
+    editPrompt: string,
+    contextImages?: {
+      useTemplate?: boolean;
+      descImageUrls?: string[];
+      uploadedFiles?: File[];
+    }
+  ) => Promise<void>;
   
   // 导出
   exportPPTX: () => Promise<void>;
@@ -277,7 +285,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         set({ activeTaskId: taskId });
         await get().pollTask(taskId);
       } else {
-        console.warn('[异步任务] 响应中没有task_id:', response);
+        console.warn('[异步任务] 响应中没有task_id，可能是同步操作:', response);
+        // 同步操作完成后，刷新项目数据
+        await get().syncProject();
         set({ isGlobalLoading: false });
       }
     } catch (error: any) {
@@ -522,12 +532,45 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     await poll();
   },
 
-  // 编辑页面图片
-  editPageImage: async (pageId, editPrompt) => {
-    const { currentProject, startAsyncTask } = get();
+  // 编辑页面图片（异步）
+  editPageImage: async (pageId, editPrompt, contextImages) => {
+    const { currentProject, pageGeneratingTasks } = get();
     if (!currentProject) return;
 
-    await startAsyncTask(() => api.editPageImage(currentProject.id, pageId, editPrompt));
+    // 如果该页面正在生成，不重复提交
+    if (pageGeneratingTasks[pageId]) {
+      console.log(`[编辑] 页面 ${pageId} 正在生成中，跳过重复请求`);
+      return;
+    }
+
+    set({ error: null });
+    try {
+      const response = await api.editPageImage(currentProject.id, pageId, editPrompt, contextImages);
+      const taskId = response.data?.task_id;
+      
+      if (taskId) {
+        // 记录该页面的任务ID
+        set({ 
+          pageGeneratingTasks: { ...pageGeneratingTasks, [pageId]: taskId }
+        });
+        
+        // 立即同步一次项目数据，以获取后端设置的'GENERATING'状态
+        await get().syncProject();
+        
+        // 开始轮询该页面的任务状态
+        await get().pollPageTask(pageId, taskId);
+      } else {
+        // 如果没有返回task_id，可能是同步接口，直接刷新
+        await get().syncProject();
+      }
+    } catch (error: any) {
+      // 清除该页面的任务记录
+      const { pageGeneratingTasks } = get();
+      const newTasks = { ...pageGeneratingTasks };
+      delete newTasks[pageId];
+      set({ pageGeneratingTasks: newTasks, error: error.message || '编辑图片失败' });
+      throw error;
+    }
   },
 
   // 导出PPTX
