@@ -190,13 +190,13 @@ export const ReferenceFileCard: React.FC<ReferenceFileCardProps> = ({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-1">
-        {/* Reparse Button - 只在解析完成时显示 */}
-        {file.parse_status === 'completed' && (
+        {/* Reparse Button - 在解析完成或失败时显示 */}
+        {(file.parse_status === 'completed' || file.parse_status === 'failed') && (
           <button
             onClick={handleReparse}
             disabled={isReparsing}
             className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
-            title="重新解析"
+            title={'重新解析'}
           >
             {isReparsing ? (
               <Loader2 className="w-4 h-4 animate-spin" />

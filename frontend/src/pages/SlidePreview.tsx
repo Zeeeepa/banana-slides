@@ -15,6 +15,7 @@ import {
   Upload,
   Image as ImageIcon,
   ImagePlus,
+  Layers,
 } from 'lucide-react';
 import { Button, Loading, Modal, Textarea, useToast, useConfirm, MaterialSelector } from '@/components/shared';
 import { MaterialGeneratorModal } from '@/components/shared/MaterialGeneratorModal';
@@ -23,6 +24,7 @@ import { listUserTemplates, type UserTemplate } from '@/api/endpoints';
 import { materialUrlToFile } from '@/components/shared/MaterialSelector';
 import type { Material } from '@/api/endpoints';
 import { SlideCard } from '@/components/preview/SlideCard';
+import { ComponentEditor } from '@/components/editor';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getImageUrl } from '@/api/client';
 import { getPageImageVersions, setCurrentImageVersion, updateProject, uploadTemplate } from '@/api/endpoints';
@@ -77,6 +79,8 @@ export const SlidePreview: React.FC = () => {
   // 素材选择器模态开关
   const [userTemplates, setUserTemplates] = useState<UserTemplate[]>([]);
   const [isMaterialSelectorOpen, setIsMaterialSelectorOpen] = useState(false);
+  // 组件编辑器开关
+  const [isComponentEditorOpen, setIsComponentEditorOpen] = useState(false);
   // 每页编辑参数缓存（前端会话内缓存，便于重复执行）
   const [editContextByPage, setEditContextByPage] = useState<Record<string, {
     prompt: string;
@@ -785,6 +789,10 @@ export const SlidePreview: React.FC = () => {
                   setSelectedIndex(index);
                   handleEditPage();
                 }}
+                onComponentEdit={() => {
+                  setSelectedIndex(index);
+                  setIsComponentEditorOpen(true);
+                }}
                 onDelete={() => page.id && deletePageById(page.id)}
                 isGenerating={page.id ? !!pageGeneratingTasks[page.id] : false}
               />
@@ -934,10 +942,20 @@ export const SlidePreview: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
+                      icon={<Layers size={16} />}
+                      onClick={() => setIsComponentEditorOpen(true)}
+                      disabled={!selectedPage?.generated_image_path}
+                      title="组件编辑 - 拆分并编辑幻灯片中的元素"
+                    >
+                      组件编辑
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={handleEditPage}
                       disabled={!selectedPage?.generated_image_path}
                     >
-                      编辑
+                      AI编辑
                     </Button>
                     <Button
                       variant="ghost"
@@ -1218,8 +1236,6 @@ export const SlidePreview: React.FC = () => {
           </div>
         </div>
       </Modal>
-      <ToastContainer />
-      {ConfirmDialog}
       
       {/* 模板选择 Modal */}
       <Modal
@@ -1273,6 +1289,24 @@ export const SlidePreview: React.FC = () => {
           />
         </>
       )}
+      
+      {/* 组件编辑器 */}
+      {isComponentEditorOpen && selectedPage?.id && projectId && (
+        <ComponentEditor
+          projectId={projectId}
+          pageId={selectedPage.id}
+          onClose={() => setIsComponentEditorOpen(false)}
+          onSave={() => {
+            // 刷新项目数据以显示更新后的图片
+            if (projectId) {
+              syncProject(projectId);
+            }
+          }}
+        />
+      )}
+      
+      <ToastContainer />
+      {ConfirmDialog}
     </div>
   );
 };

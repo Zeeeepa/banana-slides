@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Layers } from 'lucide-react';
 import { StatusBadge, Skeleton, useConfirm } from '@/components/shared';
 import { getImageUrl } from '@/api/client';
 import type { Page } from '@/types';
@@ -11,6 +11,7 @@ interface SlideCardProps {
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onComponentEdit?: () => void;
   isGenerating?: boolean;
 }
 
@@ -21,6 +22,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
   onClick,
   onEdit,
   onDelete,
+  onComponentEdit,
   isGenerating = false,
 }) => {
   const { confirm, ConfirmDialog } = useConfirm();
@@ -50,12 +52,25 @@ export const SlideCard: React.FC<SlideCardProps> = ({
             />
             {/* 悬停操作 */}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              {onComponentEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onComponentEdit();
+                  }}
+                  className="p-2 bg-white rounded-lg hover:bg-banana-50 transition-colors"
+                  title="组件编辑"
+                >
+                  <Layers size={18} className="text-banana-600" />
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit();
                 }}
                 className="p-2 bg-white rounded-lg hover:bg-banana-50 transition-colors"
+                title="AI编辑"
               >
                 <Edit2 size={18} />
               </button>
@@ -69,6 +84,7 @@ export const SlideCard: React.FC<SlideCardProps> = ({
                   );
                 }}
                 className="p-2 bg-white rounded-lg hover:bg-red-50 transition-colors"
+                title="删除"
               >
                 <Trash2 size={18} className="text-red-600" />
               </button>

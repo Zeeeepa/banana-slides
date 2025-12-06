@@ -48,6 +48,7 @@ class Config:
     # MinerU 文件解析服务配置
     MINERU_TOKEN = os.getenv('MINERU_TOKEN', '')
     MINERU_API_BASE = os.getenv('MINERU_API_BASE', 'https://mineru.net')
+    MINERU_ENABLE_TABLE = os.getenv('MINERU_ENABLE_TABLE', 'false').lower() == 'true'
     
     # 图片识别模型配置
     IMAGE_CAPTION_MODEL = os.getenv('IMAGE_CAPTION_MODEL', 'gemini-2.5-flash')

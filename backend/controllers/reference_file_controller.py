@@ -62,7 +62,8 @@ def _parse_file_async(file_id: str, file_path: str, filename: str, app):
                 mineru_api_base=current_app.config['MINERU_API_BASE'],
                 google_api_key=current_app.config['GOOGLE_API_KEY'],
                 google_api_base=current_app.config['GOOGLE_API_BASE'],
-                image_caption_model=current_app.config['IMAGE_CAPTION_MODEL']
+                image_caption_model=current_app.config['IMAGE_CAPTION_MODEL'],
+                enable_table=current_app.config['MINERU_ENABLE_TABLE']
             )
             
             # Parse file

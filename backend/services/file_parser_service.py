@@ -23,7 +23,8 @@ class FileParserService:
     
     def __init__(self, mineru_token: str, mineru_api_base: str = "https://mineru.net",
                  google_api_key: str = "", google_api_base: str = "",
-                 image_caption_model: str = "gemini-2.5-flash"):
+                 image_caption_model: str = "gemini-2.5-flash",
+                 enable_table: bool = False):
         """
         Initialize the file parser service
         
@@ -33,9 +34,11 @@ class FileParserService:
             google_api_key: Google Gemini API key for image captioning
             google_api_base: Google Gemini API base URL
             image_caption_model: Model to use for image captioning
+            enable_table: Whether to enable table recognition in MinerU (default: False)
         """
         self.mineru_token = mineru_token
         self.mineru_api_base = mineru_api_base
+        self.enable_table = enable_table
         self.get_upload_url_api = f"{mineru_api_base}/api/v4/file-urls/batch"
         self.get_result_api_template = f"{mineru_api_base}/api/v4/extract-results/batch/{{}}"
         
@@ -215,9 +218,10 @@ class FileParserService:
         
         upload_data = {
             "files": [{"name": filename}],
-            "model_version": "vlm"  # or "pipeline"
+            "model_version": "vlm",  # or "pipeline"
+            "enable_table": self.enable_table
         }
-        
+        logger.debug(f"use config: upload_data = {upload_data}")
         try:
             response = requests.post(
                 self.get_upload_url_api,

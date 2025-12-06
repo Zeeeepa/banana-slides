@@ -216,17 +216,8 @@ export const ReferenceFileSelector: React.FC<ReferenceFileSelectorProps> = React
       }
     } else {
       // 所有文件都已解析或正在解析，直接确认
-      // 允许选择所有状态的文件（completed, parsing）
-      const validFiles = selected.filter(f => 
-        f.parse_status === 'completed' || f.parse_status === 'parsing'
-      );
       
-      if (validFiles.length === 0) {
-        show({ message: '请选择有效的文件', type: 'info' });
-        return;
-      }
-      
-      onSelect(validFiles);
+      onSelect(selected);
       onClose();
     }
   };

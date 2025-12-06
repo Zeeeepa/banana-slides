@@ -612,3 +612,59 @@ export const associateFileToProject = async (
   return response.data;
 };
 
+// ===== 组件编辑相关 API =====
+
+export interface ComponentData {
+  id: number;
+  url: string;
+  bbox: [number, number, number, number]; // [x, y, width, height]
+  area: number;
+  centroid: [number, number];
+}
+
+export interface PrepareComponentEditingResponse {
+  white_bg_image_url: string;
+  pure_bg_image_url: string;
+  components: ComponentData[];
+}
+
+/**
+ * 准备组件编辑
+ * @param projectId 项目ID
+ * @param pageId 页面ID
+ * @param options 可选参数
+ */
+export const prepareComponentEditing = async (
+  projectId: string,
+  pageId: string,
+  options?: {
+    min_area?: number;
+    white_threshold?: number;
+    force_regenerate?: boolean;
+  }
+): Promise<ApiResponse<PrepareComponentEditingResponse>> => {
+  const response = await apiClient.post<ApiResponse<PrepareComponentEditingResponse>>(
+    `/api/projects/${projectId}/pages/${pageId}/components/prepare`,
+    options || {}
+  );
+  return response.data;
+};
+
+/**
+ * 保存组件布局
+ * @param projectId 项目ID
+ * @param pageId 页面ID
+ * @param canvasDataUrl 画布数据URL（base64）
+ */
+export const saveComponentLayout = async (
+  projectId: string,
+  pageId: string,
+  canvasDataUrl: string
+): Promise<ApiResponse<{ image_url: string; updated_at: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ image_url: string; updated_at: string }>>(
+    `/api/projects/${projectId}/pages/${pageId}/components/save`,
+    { canvas_data_url: canvasDataUrl }
+  );
+  return response.data;
+};
+
