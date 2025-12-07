@@ -20,10 +20,38 @@ from .prompts import (
     get_image_generation_prompt,
     get_image_edit_prompt,
     get_description_to_outline_prompt,
-    get_description_split_prompt
+    get_description_split_prompt,
+    get_outline_refinement_prompt,
+    get_descriptions_refinement_prompt
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ProjectContext:
+    """项目上下文数据类，统一管理 AI 需要的所有项目信息"""
+    
+    def __init__(self, project_dict: Dict, reference_files_content: Optional[List[Dict[str, str]]] = None):
+        """
+        Args:
+            project_dict: 项目对象的字典表示（通常是 project.to_dict()）
+            reference_files_content: 参考文件内容列表
+        """
+        self.idea_prompt = project_dict.get('idea_prompt')
+        self.outline_text = project_dict.get('outline_text')
+        self.description_text = project_dict.get('description_text')
+        self.creation_type = project_dict.get('creation_type', 'idea')
+        self.reference_files_content = reference_files_content or []
+    
+    def to_dict(self) -> Dict:
+        """转换为字典，方便传递"""
+        return {
+            'idea_prompt': self.idea_prompt,
+            'outline_text': self.outline_text,
+            'description_text': self.description_text,
+            'creation_type': self.creation_type,
+            'reference_files_content': self.reference_files_content
+        }
 
 
 class AIService:
@@ -450,6 +478,82 @@ class AIService:
         response = self.client.models.generate_content(
             model=self.text_model,
             contents=split_prompt,
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=1000),
+            ),
+        )
+        
+        descriptions_json = response.text.strip().strip("```json").strip("```").strip()
+        descriptions = json.loads(descriptions_json)
+        
+        # 确保返回的是字符串列表
+        if isinstance(descriptions, list):
+            return [str(desc) for desc in descriptions]
+        else:
+            raise ValueError("Expected a list of page descriptions, but got: " + str(type(descriptions)))
+    
+    def refine_outline(self, current_outline: List[Dict], user_requirement: str,
+                      project_context: ProjectContext,
+                      previous_requirements: Optional[List[str]] = None) -> List[Dict]:
+        """
+        根据用户要求修改已有大纲
+        
+        Args:
+            current_outline: 当前的大纲结构
+            user_requirement: 用户的新要求
+            project_context: 项目上下文对象，包含所有原始信息
+            previous_requirements: 之前的修改要求列表（可选）
+        
+        Returns:
+            修改后的大纲结构
+        """
+        refinement_prompt = get_outline_refinement_prompt(
+            current_outline=current_outline,
+            user_requirement=user_requirement,
+            project_context=project_context,
+            previous_requirements=previous_requirements
+        )
+        
+        response = self.client.models.generate_content(
+            model=self.text_model,
+            contents=refinement_prompt,
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=1000),
+            ),
+        )
+        
+        outline_json = response.text.strip().strip("```json").strip("```").strip()
+        outline = json.loads(outline_json)
+        return outline
+    
+    def refine_descriptions(self, current_descriptions: List[Dict], user_requirement: str,
+                           project_context: ProjectContext,
+                           outline: List[Dict] = None,
+                           previous_requirements: Optional[List[str]] = None) -> List[str]:
+        """
+        根据用户要求修改已有页面描述
+        
+        Args:
+            current_descriptions: 当前的页面描述列表，每个元素包含 {index, title, description_content}
+            user_requirement: 用户的新要求
+            project_context: 项目上下文对象，包含所有原始信息
+            outline: 完整的大纲结构（可选）
+            previous_requirements: 之前的修改要求列表（可选）
+        
+        Returns:
+            修改后的页面描述列表（字符串列表）
+        """
+        refinement_prompt = get_descriptions_refinement_prompt(
+            current_descriptions=current_descriptions,
+            user_requirement=user_requirement,
+            project_context=project_context,
+            outline=outline,
+            previous_requirements=previous_requirements
+        )
+        
+        response = self.client.models.generate_content(
+            model=self.text_model,
+            contents=refinement_prompt,
             config=types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=1000),
             ),
