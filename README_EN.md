@@ -19,7 +19,8 @@
 
 </p> 
 
-<b>A native AI-powered PPT generation application based on nano banana pro🍌, supporting idea/outline/page description to generate complete PPT presentations, automatic text and image link extraction, upload any materials, and verbally propose modifications, moving towards true "Vibe PPT"</b>
+<b>A native AI-powered PPT generation application based on nano banana pro🍌, supporting idea/outline/page description to generate complete PPT presentations,<br></b>
+<b> automatic extraction of attached charts, upload any materials, and verbal modifications, moving towards true "Vibe PPT" </b>
 
 <b>🎯 Lower the barrier to PPT creation, enabling everyone to quickly create beautiful and professional presentations</b>
 
@@ -65,34 +66,14 @@ However, the emergence of nano banana🍌 model changed everything. I tried usin
 
 | | |
 |:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/1a63afc9-ad05-4755-8480-fc4aa64987f1" width="500" alt="Example 1"> | <img src="https://github.com/user-attachments/assets/c64cd952-2cdf-4a92-8c34-0322cbf3de4e" width="500" alt="Example 2"> |
-| **The Evolution of Money: From Shells to Paper Currency** | **DeepSeek-V3.2 Technical Showcase** |
-| <img src="https://github.com/user-attachments/assets/d58ce3f7-bcec-451d-a3b9-ca3c16223644" width="500" alt="Example 3"> | <img src="https://github.com/user-attachments/assets/383eb011-a167-4343-99eb-e1d0568830c7" width="500" alt="Example 4"> |
-| **Introduction to Software Development Principles** | **Prepared Food Smart Production Line Equipment R&D and Industrialization** |
+| <img src="https://github.com/user-attachments/assets/d58ce3f7-bcec-451d-a3b9-ca3c16223644" width="500" alt="Example 3"> | <img src="https://github.com/user-attachments/assets/c64cd952-2cdf-4a92-8c34-0322cbf3de4e" width="500" alt="Example 2"> |
+| **Introduction to Software Development Principles** | **DeepSeek-V3.2 Technical Showcase** |
+| <img src="https://github.com/user-attachments/assets/383eb011-a167-4343-99eb-e1d0568830c7" width="500" alt="Example 4"> | <img src="https://github.com/user-attachments/assets/1a63afc9-ad05-4755-8480-fc4aa64987f1" width="500" alt="Example 1"> |
+| **Prepared Food Smart Production Line Equipment R&D and Industrialization** | **The Evolution of Money: From Shells to Paper Currency** |
 
 </div>
 
 More examples available at <a href="https://github.com/Anionex/banana-slides/issues/2" > Use Cases </a>
-
-## 🗺️ Development Roadmap
-
-| Status | Milestone |
-| --- | --- |
-| ✅ Completed | Create PPT from idea, outline, page description three paths |
-| ✅ Completed | Parse Markdown format images in text |
-| ✅ Completed | Add more materials to PPT single page |
-| ✅ Completed | PPT single page frame selection area Vibe verbal editing |
-| ✅ Completed | Material module: material generation, upload, etc. |
-| ✅ Completed | Support upload + parsing of multiple file types |
-| ✅ Completed | Support Vibe verbal adjustment of outline and description |
-| 🔄 In Progress | Support element segmentation and further editing of generated images (segment + inpaint) |
-| 🔄 In Progress | Web search |
-| 🔄 In Progress | Agent mode |
-| 🧭 Planned | Optimize frontend loading speed |
-| 🧭 Planned | Online playback function |
-| 🧭 Planned | Simple animations and page transition effects |
-| 🧭 Planned | Multi-language support |
-| 🧭 Planned | User system |
 
 
 ## 🎯 Feature Introduction
@@ -118,14 +99,36 @@ No longer limited by complex menu buttons, directly issue modification instructi
 - **Local redraw**: Make verbal modifications to unsatisfactory areas (e.g., "change this chart to a pie chart").
 - **Full page optimization**: Generate high-definition, style-consistent pages based on nano banana pro🍌.
 
-<img width="2880" height="1620" alt="image" src="https://github.com/user-attachments/assets/9d71b229-84d0-4ffd-9863-3e04b16e3567" />
+<img width="2000" height="1125" alt="image" src="https://github.com/user-attachments/assets/929ba24a-996c-4f6d-9ec6-818be6b08ea3" />
 
 
 ### 4. Out-of-the-box Format Export
 - **Multi-format support**: One-click export to standard **PPTX** or **PDF** files.
 - **Perfect adaptation**: Default 16:9 ratio, layout requires no secondary adjustment, ready for presentation.
 
+<img width="1000" alt="image" src="https://github.com/user-attachments/assets/3e54bbba-88be-4f69-90a1-02e875c25420" />
 <img width="1748" height="538" alt="PPT and PDF export" src="https://github.com/user-attachments/assets/647eb9b1-d0b6-42cb-a898-378ebe06c984" />
+
+
+## 🗺️ Development Roadmap
+
+| Status | Milestone |
+| --- | --- |
+| ✅ Completed | Create PPT from idea, outline, page description three paths |
+| ✅ Completed | Parse Markdown format images in text |
+| ✅ Completed | Add more materials to PPT single page |
+| ✅ Completed | PPT single page frame selection area Vibe verbal editing |
+| ✅ Completed | Material module: material generation, upload, etc. |
+| ✅ Completed | Support upload + parsing of multiple file types |
+| ✅ Completed | Support Vibe verbal adjustment of outline and description |
+| 🔄 In Progress | Support element segmentation and further editing of generated images (segment + inpaint) |
+| 🔄 In Progress | Web search |
+| 🔄 In Progress | Agent mode |
+| 🧭 Planned | Optimize frontend loading speed |
+| 🧭 Planned | Online playback function |
+| 🧭 Planned | Simple animations and page transition effects |
+| 🧭 Planned | Multi-language support |
+| 🧭 Planned | User system |
 
 ## 📦 Usage
 
@@ -156,8 +159,16 @@ cp .env.example .env
 
 Edit the `.env` file to configure necessary environment variables:
 ```env
-GOOGLE_API_KEY=your-google-api-key-here
+# AI Provider format configuration (gemini / openai)
+AI_PROVIDER_FORMAT=gemini
+
+# Gemini format configuration (used when AI_PROVIDER_FORMAT=gemini)
+GOOGLE_API_KEY=your-api-key-here
 GOOGLE_API_BASE=https://generativelanguage.googleapis.com
+
+# OpenAI format configuration (used when AI_PROVIDER_FORMAT=openai)
+OPENAI_API_KEY=your-api-key-here
+OPENAI_API_BASE=https://api.openai.com/v1
 ...
 ```
 
@@ -436,4 +447,3 @@ MIT
 </a>
 
 <br>
-
