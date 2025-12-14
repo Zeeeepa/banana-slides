@@ -11,6 +11,7 @@ import requests
 from typing import List, Dict, Optional, Union
 from textwrap import dedent
 from PIL import Image
+from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from .prompts import (
     get_outline_generation_prompt,
     get_outline_parsing_prompt,
@@ -139,6 +140,37 @@ class AIService:
         
         return cleaned_text
     
+    @retry(
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((json.JSONDecodeError, ValueError)),
+        reraise=True
+    )
+    def generate_json(self, prompt: str, thinking_budget: int = 1000) -> Union[Dict, List]:
+        """
+        生成并解析JSON，如果解析失败则重新生成
+        
+        Args:
+            prompt: 生成提示词
+            thinking_budget: 思考预算
+            
+        Returns:
+            解析后的JSON对象（字典或列表）
+            
+        Raises:
+            json.JSONDecodeError: JSON解析失败（重试3次后仍失败）
+        """
+        # 调用AI生成文本
+        response_text = self.text_provider.generate_text(prompt, thinking_budget=thinking_budget)
+        
+        # 清理响应文本：移除markdown代码块标记和多余空白
+        cleaned_text = response_text.strip().strip("```json").strip("```").strip()
+        
+        try:
+            return json.loads(cleaned_text)
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON解析失败，将重新生成。原始文本: {cleaned_text[:200]}... 错误: {str(e)}")
+            raise
+    
     @staticmethod
     def _convert_mineru_path_to_local(mineru_path: str) -> Optional[str]:
         """
@@ -193,11 +225,7 @@ class AIService:
             List of outline items (may contain parts with pages or direct pages)
         """
         outline_prompt = get_outline_generation_prompt(project_context)
-        
-        response_text = self.text_provider.generate_text(outline_prompt, thinking_budget=1000)
-        
-        outline_text = response_text.strip().strip("```json").strip("```").strip()
-        outline = json.loads(outline_text)
+        outline = self.generate_json(outline_prompt, thinking_budget=1000)
         return outline
     
     def parse_outline_text(self, project_context: ProjectContext) -> List[Dict]:
@@ -212,11 +240,7 @@ class AIService:
             List of outline items (may contain parts with pages or direct pages)
         """
         parse_prompt = get_outline_parsing_prompt(project_context)
-        
-        response_text = self.text_provider.generate_text(parse_prompt, thinking_budget=1000)
-        
-        outline_json = response_text.strip().strip("```json").strip("```").strip()
-        outline = json.loads(outline_json)
+        outline = self.generate_json(parse_prompt, thinking_budget=1000)
         return outline
     
     def flatten_outline(self, outline: List[Dict]) -> List[Dict]:
@@ -438,11 +462,7 @@ class AIService:
             List of outline items (may contain parts with pages or direct pages)
         """
         parse_prompt = get_description_to_outline_prompt(project_context)
-        
-        response_text = self.text_provider.generate_text(parse_prompt, thinking_budget=1000)
-        
-        outline_json = response_text.strip().strip("```json").strip("```").strip()
-        outline = json.loads(outline_json)
+        outline = self.generate_json(parse_prompt, thinking_budget=1000)
         return outline
     
     def parse_description_to_page_descriptions(self, project_context: ProjectContext, outline: List[Dict]) -> List[str]:
@@ -457,11 +477,7 @@ class AIService:
             List of page descriptions (strings), one for each page in the outline
         """
         split_prompt = get_description_split_prompt(project_context, outline)
-        
-        response_text = self.text_provider.generate_text(split_prompt, thinking_budget=1000)
-        
-        descriptions_json = response_text.strip().strip("```json").strip("```").strip()
-        descriptions = json.loads(descriptions_json)
+        descriptions = self.generate_json(split_prompt, thinking_budget=1000)
         
         # 确保返回的是字符串列表
         if isinstance(descriptions, list):
@@ -490,11 +506,7 @@ class AIService:
             project_context=project_context,
             previous_requirements=previous_requirements
         )
-        
-        response_text = self.text_provider.generate_text(refinement_prompt, thinking_budget=1000)
-        
-        outline_json = response_text.strip().strip("```json").strip("```").strip()
-        outline = json.loads(outline_json)
+        outline = self.generate_json(refinement_prompt, thinking_budget=1000)
         return outline
     
     def refine_descriptions(self, current_descriptions: List[Dict], user_requirement: str,
@@ -521,11 +533,7 @@ class AIService:
             outline=outline,
             previous_requirements=previous_requirements
         )
-        
-        response_text = self.text_provider.generate_text(refinement_prompt, thinking_budget=1000)
-        
-        descriptions_json = response_text.strip().strip("```json").strip("```").strip()
-        descriptions = json.loads(descriptions_json)
+        descriptions = self.generate_json(refinement_prompt, thinking_budget=1000)
         
         # 确保返回的是字符串列表
         if isinstance(descriptions, list):
