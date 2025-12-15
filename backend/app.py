@@ -84,6 +84,7 @@ def create_app():
         level=log_level,
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)],
+        force=True,  # override any handlers created before this point
     )
     
     # 设置第三方库的日志级别，避免过多的DEBUG日志
