@@ -62,31 +62,18 @@ export const Settings: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // 只发送有值的字段
-      const updateData: any = {};
-      if (formData.ai_provider_format) {
-        updateData.ai_provider_format = formData.ai_provider_format;
-      }
-      if (formData.api_base_url) {
-        updateData.api_base_url = formData.api_base_url;
-      }
-      if (formData.api_key) {
-        updateData.api_key = formData.api_key;
-      }
-      if (formData.image_resolution) {
-        updateData.image_resolution = formData.image_resolution;
-      }
-      if (formData.image_aspect_ratio) {
-        updateData.image_aspect_ratio = formData.image_aspect_ratio;
-      }
-      if (formData.max_description_workers) {
-        updateData.max_description_workers = formData.max_description_workers;
-      }
-      if (formData.max_image_workers) {
-        updateData.max_image_workers = formData.max_image_workers;
+      // 除了 api_key 以外的字段全部透传（包括空字符串），让后端决定语义
+      const { api_key, ...otherData } = formData;
+      const payload: Parameters<typeof api.updateSettings>[0] = {
+        ...otherData,
+      };
+
+      // 只有当用户输入了新的 API Key 时才更新，留空表示“不修改当前 Key”
+      if (api_key) {
+        payload.api_key = api_key;
       }
 
-      const response = await api.updateSettings(updateData);
+      const response = await api.updateSettings(payload);
       if (response.data) {
         setSettings(response.data);
         show({ message: '设置保存成功', type: 'success' });

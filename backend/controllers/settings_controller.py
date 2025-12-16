@@ -61,7 +61,14 @@ def update_settings():
 
         # Update API configuration
         if "api_base_url" in data:
-            settings.api_base_url = data["api_base_url"]
+            raw_base_url = data["api_base_url"]
+            # 前端传入空字符串时，视为“清除覆盖，回退到 env/default”
+            # None / "" / 纯空白 => 存 None，_sync_settings_to_config 会 pop 掉覆盖
+            if raw_base_url is None:
+                settings.api_base_url = None
+            else:
+                value = str(raw_base_url).strip()
+                settings.api_base_url = value if value != "" else None
 
         if "api_key" in data:
             settings.api_key = data["api_key"]
