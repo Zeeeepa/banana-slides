@@ -21,6 +21,7 @@ from models import db
 from config import Config
 from controllers.material_controller import material_bp, material_global_bp
 from controllers.reference_file_controller import reference_file_bp
+from controllers.settings_controller import settings_bp
 from controllers import project_bp, page_bp, template_bp, user_template_bp, export_bp, file_bp
 
 
@@ -103,10 +104,14 @@ def create_app():
     app.register_blueprint(material_bp)
     app.register_blueprint(material_global_bp)
     app.register_blueprint(reference_file_bp, url_prefix='/api/reference-files')
-    
+    app.register_blueprint(settings_bp)
+
     with app.app_context():
         db.create_all()
-    
+
+        # Load settings from database and sync to app.config
+        _load_settings_to_config(app)
+
     # Health check endpoint
     @app.route('/health')
     def health_check():
@@ -142,13 +147,62 @@ def create_app():
     return app
 
 
+def _load_settings_to_config(app):
+    """Load settings from database and apply to app.config on startup"""
+    from models import Settings
+    try:
+        settings = Settings.get_settings()
+        
+        # Load AI provider format (always sync, has default value)
+        if settings.ai_provider_format:
+            app.config['AI_PROVIDER_FORMAT'] = settings.ai_provider_format
+            logging.info(f"Loaded AI_PROVIDER_FORMAT from settings: {settings.ai_provider_format}")
+        
+        # Load API configuration
+        # Note: We load even if value is None/empty to allow clearing settings
+        # But we only log if there's an actual value
+        if settings.api_base_url is not None:
+            # 将数据库中的统一 API Base 同步到 Google/OpenAI 两个配置，确保覆盖环境变量
+            app.config['GOOGLE_API_BASE'] = settings.api_base_url
+            app.config['OPENAI_API_BASE'] = settings.api_base_url
+            if settings.api_base_url:
+                logging.info(f"Loaded API_BASE from settings: {settings.api_base_url}")
+            else:
+                logging.info("API_BASE is empty in settings, using env var or default")
+
+        if settings.api_key is not None:
+            # 同步到两个提供商的 key，数据库优先于环境变量
+            app.config['GOOGLE_API_KEY'] = settings.api_key
+            app.config['OPENAI_API_KEY'] = settings.api_key
+            if settings.api_key:
+                logging.info("Loaded API key from settings")
+            else:
+                logging.info("API key is empty in settings, using env var or default")
+
+        # Load image generation settings
+        app.config['DEFAULT_RESOLUTION'] = settings.image_resolution
+        app.config['DEFAULT_ASPECT_RATIO'] = settings.image_aspect_ratio
+        logging.info(f"Loaded image settings: {settings.image_resolution}, {settings.image_aspect_ratio}")
+
+        # Load worker settings
+        app.config['MAX_DESCRIPTION_WORKERS'] = settings.max_description_workers
+        app.config['MAX_IMAGE_WORKERS'] = settings.max_image_workers
+        logging.info(f"Loaded worker settings: desc={settings.max_description_workers}, img={settings.max_image_workers}")
+
+    except Exception as e:
+        logging.warning(f"Could not load settings from database: {e}")
+
+
 # Create app instance
 app = create_app()
 
 
 if __name__ == '__main__':
     # Run development server
-    port = int(os.getenv('PORT', 5000))
+    if os.getenv("IN_DOCKER", "0") == "1":
+        port = 5000 # 在 docker 内部部署时始终使用 5000 端口.
+    else:
+        port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     logging.info(

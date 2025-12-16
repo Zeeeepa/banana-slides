@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type { Project, Task, ApiResponse, CreateProjectRequest, Page } from '@/types';
+import type { Settings } from '../types/index';
 
 // ===== 项目相关 API =====
 
@@ -33,7 +34,7 @@ export const uploadTemplate = async (
 ): Promise<ApiResponse<{ template_image_url: string }>> => {
   const formData = new FormData();
   formData.append('template_image', templateImage);
-  
+
   const response = await apiClient.post<ApiResponse<{ template_image_url: string }>>(
     `/api/projects/${projectId}/template`,
     formData
@@ -48,7 +49,7 @@ export const listProjects = async (limit?: number, offset?: number): Promise<Api
   const params = new URLSearchParams();
   if (limit !== undefined) params.append('limit', limit.toString());
   if (offset !== undefined) params.append('offset', offset.toString());
-  
+
   const queryString = params.toString();
   const url = `/api/projects${queryString ? `?${queryString}` : ''}`;
   const response = await apiClient.get<ApiResponse<{ projects: Project[]; total: number }>>(url);
@@ -179,7 +180,7 @@ export const refineOutline = async (
   const lang = language || getStoredOutputLanguage() || 'zh';
   const response = await apiClient.post<ApiResponse<{ pages: Page[]; message: string }>>(
     `/api/projects/${projectId}/refine/outline`,
-    { 
+    {
       user_requirement: userRequirement,
       previous_requirements: previousRequirements || [],
       language: lang
@@ -204,7 +205,7 @@ export const refineDescriptions = async (
   const lang = language || getStoredOutputLanguage() || 'zh';
   const response = await apiClient.post<ApiResponse<{ pages: Page[]; message: string }>>(
     `/api/projects/${projectId}/refine/descriptions`,
-    { 
+    {
       user_requirement: userRequirement,
       previous_requirements: previousRequirements || [],
       language: lang
@@ -271,7 +272,7 @@ export const editPageImage = async (
     contextImages.uploadedFiles.forEach((file) => {
       formData.append('context_images', file);
     });
-    
+
     const response = await apiClient.post<ApiResponse>(
       `/api/projects/${projectId}/pages/${pageId}/edit/image`,
       formData
@@ -488,7 +489,7 @@ export const listMaterials = async (
   projectId?: string
 ): Promise<ApiResponse<{ materials: Material[]; count: number }>> => {
   let url: string;
-  
+
   if (!projectId || projectId === 'all') {
     // Get all materials using global endpoint
     url = '/api/materials?project_id=all';
@@ -499,7 +500,7 @@ export const listMaterials = async (
     // Get materials for specific project
     url = `/api/projects/${projectId}/materials`;
   }
-  
+
   const response = await apiClient.get<ApiResponse<{ materials: Material[]; count: number }>>(url);
   return response.data;
 };
@@ -517,7 +518,7 @@ export const uploadMaterial = async (
 ): Promise<ApiResponse<Material>> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   let url: string;
   if (!projectId || projectId === 'none') {
     // Use global upload endpoint for materials not bound to any project
@@ -526,7 +527,7 @@ export const uploadMaterial = async (
     // Use project-specific upload endpoint
     url = `/api/projects/${projectId}/materials/upload`;
   }
-  
+
   const response = await apiClient.post<ApiResponse<Material>>(url, formData);
   return response.data;
 };
@@ -577,7 +578,7 @@ export const uploadUserTemplate = async (
   if (name) {
     formData.append('name', name);
   }
-  
+
   const response = await apiClient.post<ApiResponse<UserTemplate>>(
     '/api/user-templates',
     formData
@@ -633,7 +634,7 @@ export const uploadReferenceFile = async (
   if (projectId && projectId !== 'none') {
     formData.append('project_id', projectId);
   }
-  
+
   const response = await apiClient.post<ApiResponse<{ file: ReferenceFile }>>(
     '/api/reference-files/upload',
     formData
@@ -734,7 +735,7 @@ export const OUTPUT_LANGUAGE_OPTIONS: OutputLanguageOption[] = [
 
 /**
  * 获取默认输出语言设置（从服务器环境变量读取）
- * 
+ *
  * 注意：这只返回服务器配置的默认语言。
  * 实际的语言选择应由前端在 sessionStorage 中管理，
  * 并在每次生成请求时通过 language 参数传递。
@@ -764,4 +765,30 @@ export const getStoredOutputLanguage = (): OutputLanguage | null => {
  */
 export const storeOutputLanguage = (language: OutputLanguage): void => {
   sessionStorage.setItem('outputLanguage', language);
+};
+
+/**
+ * 获取系统设置
+ */
+export const getSettings = async (): Promise<ApiResponse<Settings>> => {
+  const response = await apiClient.get<ApiResponse<Settings>>('/api/settings');
+  return response.data;
+};
+
+/**
+ * 更新系统设置
+ */
+export const updateSettings = async (
+  data: Partial<Pick<Settings, 'ai_provider_format' | 'api_base_url' | 'image_resolution' | 'image_aspect_ratio' | 'max_description_workers' | 'max_image_workers'>> & { api_key?: string }
+): Promise<ApiResponse<Settings>> => {
+  const response = await apiClient.put<ApiResponse<Settings>>('/api/settings', data);
+  return response.data;
+};
+
+/**
+ * 重置系统设置
+ */
+export const resetSettings = async (): Promise<ApiResponse<Settings>> => {
+  const response = await apiClient.post<ApiResponse<Settings>>('/api/settings/reset');
+  return response.data;
 };
