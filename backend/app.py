@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
+from sqlalchemy.exc import SQLAlchemyError
 from flask_migrate import Migrate
 
 # Load environment variables from project root .env file
@@ -129,9 +130,9 @@ def create_app():
         try:
             settings = Settings.get_settings()
             return {'data': {'language': settings.output_language}}
-        except Exception as e:
-            logging.warning(f"Failed to load output language from settings: {e}")
-            return {'data': {'language': 'zh'}}  # 默认中文
+        except SQLAlchemyError as db_error:
+            logging.warning(f"Failed to load output language from settings: {db_error}")
+            return {'data': {'language': Config.OUTPUT_LANGUAGE}}  # 默认中文
 
     # Root endpoint
     @app.route('/')
