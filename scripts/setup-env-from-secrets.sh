@@ -61,13 +61,13 @@ for var_name in "${REPLACEABLE_VARS[@]}"; do
       # Use | as delimiter to support values with / like URLs
       sed -i "s|^${var_name}=.*|${var_name}=${escaped_value}|" "$ENV_FILE"
       echo "Replaced ${var_name}"
-      ((replaced_count++))
+      replaced_count=$((replaced_count + 1))
     else
       echo "Warning: ${var_name} does not exist in .env file, skipping"
     fi
   else
     # Environment variable does not exist, keep default value
-    ((skipped_count++))
+    skipped_count=$((skipped_count + 1))
   fi
 done
 
