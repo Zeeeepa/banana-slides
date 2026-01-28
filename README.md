@@ -114,7 +114,7 @@
 ### 5. 可自由编辑的pptx导出（Beta迭代中）
 - **导出图像为高还原度、背景干净的、可自由编辑图像和文字的PPT页面**
 - 相关更新见 https://github.com/Anionex/banana-slides/issues/121
-- 若出现可编辑 ppt 效果不佳，如文字重叠、文字无样式等问题，可参考[可编辑PPTX导出常见问题及排查解决方案](https://github.com/Anionex/banana-slides/issues/121#issuecomment-3708872527) 进行排查
+- 若出现可编辑 ppt 效果不佳，如文字重叠、文字无样式等问题，一般为配置问题导致，可参考[可编辑PPTX导出常见问题及排查解决方案](https://github.com/Anionex/banana-slides/issues/121#issuecomment-3708872527) 进行排查
 <img width="1000"  alt="image" src="https://github.com/user-attachments/assets/a85d2d48-1966-4800-a4bf-73d17f914062" />
 
 <br>
